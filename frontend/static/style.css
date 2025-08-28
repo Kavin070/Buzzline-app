@@ -1,0 +1,359 @@
+/* Updated style.css with name input and leaderboard layout */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #010101 0%, #575757 100%);
+  color: #fff;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 2.5rem;
+  color: #ffcc00;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.game-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* Left Panel - Name Input */
+.left-panel {
+  width: 300px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 15px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.name-section {
+  margin-bottom: 30px;
+}
+
+.name-section h3 {
+  color: #ffcc00;
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+}
+
+#nameInput {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+#nameInput:focus {
+  outline: none;
+  box-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+  transform: scale(1.02);
+}
+
+#setNameBtn {
+  width: 100%;
+  background: linear-gradient(45deg, #ffcc00, #ff9900);
+  color: #333;
+  border: none;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#setNameBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 204, 0, 0.4);
+}
+
+.player-name {
+  color: #00ff88;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.clear-btn {
+  background: #ff4444;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  margin-left: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+.clear-btn:hover {
+  background: #ff6666;
+}
+
+.instructions {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 15px;
+  border-radius: 10px;
+  border-left: 4px solid #ffcc00;
+}
+
+.instructions h4 {
+  color: #ffcc00;
+  margin-bottom: 10px;
+}
+
+.instructions ul {
+  list-style: none;
+  padding: 0;
+}
+
+.instructions li {
+  padding: 3px 0;
+  font-size: 14px;
+}
+
+.instructions li:before {
+  content: "▶ ";
+  color: #ffcc00;
+  font-weight: bold;
+}
+
+kbd {
+  background: #333;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: monospace;
+  border: 1px solid #555;
+}
+
+/* Center Panel - Video */
+.center-panel {
+  text-align: center;
+}
+
+.video-container {
+  position: relative;
+  display: inline-block;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border: 3px solid #ffcc00;
+}
+
+#video {
+  display: block;
+  width: 800px;
+  height: 600px;
+  object-fit: cover;
+}
+
+.message {
+  margin: 15px auto;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  max-width: 400px;
+  text-align: center;
+}
+
+.message.success {
+  background: rgba(0, 255, 136, 0.2);
+  border: 1px solid #00ff88;
+  color: #00ff88;
+}
+
+.message.error {
+  background: rgba(255, 68, 68, 0.2);
+  border: 1px solid #ff4444;
+  color: #ff4444;
+}
+
+.message.info {
+  background: rgba(255, 204, 0, 0.2);
+  border: 1px solid #ffcc00;
+  color: #ffcc00;
+}
+
+.footer {
+  margin-top: 15px;
+  color: #ccc;
+  font-size: 14px;
+}
+
+/* Right Panel - Leaderboard */
+.right-panel {
+  width: 350px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 15px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+#leaderboard h3 {
+  color: #ffcc00;
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 1.5rem;
+}
+
+.leaderboard-list {
+  space-y: 10px;
+}
+
+.leaderboard-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 12px 15px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: all 0.3s ease;
+  border-left: 3px solid transparent;
+}
+
+.leaderboard-entry:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(5px);
+}
+
+.leaderboard-entry.podium {
+  background: rgba(255, 204, 0, 0.1);
+  border-left-color: #ffcc00;
+}
+
+.leaderboard-entry.podium:first-child {
+  background: rgba(255, 215, 0, 0.2);
+  border-left-color: #ffd700;
+}
+
+.rank {
+  font-size: 1.2rem;
+  font-weight: bold;
+  width: 40px;
+  text-align: center;
+}
+
+.player-info {
+  flex: 1;
+  margin: 0 15px;
+}
+
+.player-info strong {
+  display: block;
+  color: #fff;
+  font-size: 16px;
+}
+
+.player-info small {
+  color: #ccc;
+  font-size: 12px;
+}
+
+.time {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  color: #00ff88;
+  font-size: 14px;
+  background: rgba(0, 255, 136, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.no-scores, .loading {
+  text-align: center;
+  color: #999;
+  font-style: italic;
+  margin: 20px 0;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  margin-top: 40px;
+  color: #999;
+  font-size: 14px;
+}
+
+/* Scrollbar styling for leaderboard */
+.right-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.right-panel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.right-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 204, 0, 0.5);
+  border-radius: 3px;
+}
+
+.right-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 204, 0, 0.7);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .game-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .left-panel, .right-panel {
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 20px;
+  }
+  
+  #video {
+    width: 100%;
+    max-width: 800px;
+    height: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+  
+  h1 {
+    font-size: 2rem;
+  }
+  
+  .left-panel, .right-panel {
+    padding: 15px;
+  }
+  
+  #video {
+    width: 100%;
+    height: auto;
+  }
+}
