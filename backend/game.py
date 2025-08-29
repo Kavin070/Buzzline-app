@@ -1,4 +1,4 @@
-# Updated game.py with name input and leaderboard functionality
+# Updated game.py with name input, leaderboard, and safe sound handling
 import cv2
 import numpy as np
 import mediapipe as mp
@@ -6,52 +6,47 @@ import random
 import time
 import json
 import os
+import sys
 from typing import List, Tuple, Optional
 
-# Option 1: Using pygame for sound (recommended)
+# -------------------- Sound Handling -------------------- #
+SOUND_AVAILABLE = False
+beep_sounds = {}
+
 try:
     import pygame
-    pygame.mixer.init()
-    SOUND_AVAILABLE = True
-    
-    def create_beep_sound(frequency: int, duration: float, volume: float):
-        """Generate a beep sound with specified frequency, duration, and volume"""
-        import numpy as np
-        sample_rate = 44100
-        
-        # Generate sine wave
-        t = np.linspace(0, duration, int(sample_rate * duration), False)
-        wave = np.sin(2 * np.pi * frequency * t)
-        
-        # Apply volume
-        wave = wave * volume
-        
-        # Convert to 16-bit integers
-        wave = (wave * 32767).astype(np.int16)
-        
-        # Create stereo sound
-        stereo_wave = np.zeros((len(wave), 2), dtype=np.int16)
-        stereo_wave[:, 0] = wave
-        stereo_wave[:, 1] = wave
-        
-        # Create pygame sound
-        sound = pygame.sndarray.make_sound(stereo_wave)
-        return sound
-    
-    # Create different intensity beep sounds
-    beep_sounds = {
-        'light': create_beep_sound(400, 0.1, 0.3),    # Low freq, short, quiet
-        'medium': create_beep_sound(600, 0.15, 0.6),  # Medium freq, medium, moderate
-        'high': create_beep_sound(1000, 0.3, 0.9)     # High freq, long, loud
-    }
-    
-except ImportError:
-    SOUND_AVAILABLE = False
-    print("Pygame not available. Install with: pip install pygame")
+    try:
+        pygame.mixer.init()
+        SOUND_AVAILABLE = True
 
-# Option 2: Using system beep (fallback)
-import os
-import sys
+        def create_beep_sound(frequency: int, duration: float, volume: float):
+            """Generate a beep sound with specified frequency, duration, and volume"""
+            sample_rate = 44100
+            t = np.linspace(0, duration, int(sample_rate * duration), False)
+            wave = np.sin(2 * np.pi * frequency * t)
+            wave = (wave * volume * 32767).astype(np.int16)
+
+            stereo_wave = np.zeros((len(wave), 2), dtype=np.int16)
+            stereo_wave[:, 0] = wave
+            stereo_wave[:, 1] = wave
+
+            return pygame.sndarray.make_sound(stereo_wave)
+
+        # Pre-generate beep sounds
+        beep_sounds = {
+            'light': create_beep_sound(400, 0.1, 0.3),
+            'medium': create_beep_sound(600, 0.15, 0.6),
+            'high': create_beep_sound(1000, 0.3, 0.9),
+        }
+
+    except Exception as e:
+        print("⚠️ Audio disabled (pygame mixer error):", e)
+        SOUND_AVAILABLE = False
+
+except ImportError:
+    print("⚠️ Pygame not available. Install with: pip install pygame")
+    SOUND_AVAILABLE = False
+
 
 def system_beep(intensity='high'):
     """Fallback system beep with different intensities"""
@@ -61,23 +56,22 @@ def system_beep(intensity='high'):
         freq, duration = 600, 150
     else:  # high
         freq, duration = 1000, 300
-    
+
     if sys.platform == "win32":
-        import winsound
-        winsound.Beep(freq, duration)
-    elif sys.platform == "darwin":  # macOS
-        os.system("afplay /System/Library/Sounds/Beep.aiff")
-    else:  # Linux
-        os.system(f"beep -f {freq} -l {duration} 2>/dev/null || echo -e '\\a'")
+        try:
+            import winsound
+            winsound.Beep(freq, duration)
+        except Exception:
+            print(f"Beep ({intensity}, disabled)")
+    else:
+        # Linux/macOS fallback
+        os.system("echo -e '\\a'")  # console bell
 
 
+# -------------------- Game Class -------------------- #
 class BuzzWireGame:
     """
     Buzz Wire Game with MediaPipe Hands + OpenCV + Sound Effects + Leaderboard.
-    - Enter player name before starting
-    - Press 's' on the browser window to start (only if name is entered)
-    - Press 'r' on the browser window to restart
-    - Leaderboard tracks best scores
     """
 
     def __init__(self, camera_index: int = 0):
@@ -92,28 +86,24 @@ class BuzzWireGame:
         )
         self.mp_drawing = mp.solutions.drawing_utils
 
-        # ---- Tunable Parameters ---- #
+        # Parameters
         self.wire_thickness = 4
         self.trace_thickness = 2
         self.tolerance = 8
         self.start_circle_radius = 15
         self.end_circle_radius = 15
-
-        # Smoothing parameters
         self.smoothing_factor = 0.3
         self.min_movement_threshold = 3
         self.max_trace_gap = 30
 
-        # Sound parameters
+        # Sound state
         self.beep_cooldown = 0.1
         self.last_beep_time = 0
         self.last_beep_intensity = None
-        
-        # Proximity thresholds for different beep intensities
         self.light_threshold = 0.4
         self.medium_threshold = 0.7
 
-        # ---- Game State ---- #
+        # Game state
         self.game_started = False
         self.game_over = False
         self.won = False
@@ -126,21 +116,19 @@ class BuzzWireGame:
         self.frames_without_finger: int = 0
         self.finger_detected: bool = False
 
-        # ---- Player and Leaderboard ---- #
+        # Player and leaderboard
         self.current_player_name: Optional[str] = None
         self.leaderboard_file = "leaderboard.json"
         self.leaderboard = self.load_leaderboard()
 
+    # -------------------- Player & Leaderboard -------------------- #
     def set_player_name(self, name: str):
-        """Set the current player name"""
         self.current_player_name = name.strip() if name else None
 
     def can_start_game(self) -> bool:
-        """Check if game can start (name must be entered)"""
         return self.current_player_name is not None and len(self.current_player_name) > 0
 
     def load_leaderboard(self) -> List[dict]:
-        """Load leaderboard from JSON file"""
         try:
             if os.path.exists(self.leaderboard_file):
                 with open(self.leaderboard_file, 'r') as f:
@@ -150,7 +138,6 @@ class BuzzWireGame:
         return []
 
     def save_leaderboard(self):
-        """Save leaderboard to JSON file"""
         try:
             with open(self.leaderboard_file, 'w') as f:
                 json.dump(self.leaderboard, f, indent=2)
@@ -158,75 +145,53 @@ class BuzzWireGame:
             print(f"Error saving leaderboard: {e}")
 
     def add_to_leaderboard(self, name: str, time_score: float):
-        """Add a new score to leaderboard and sort by time"""
         score_entry = {
             "name": name,
             "time": time_score,
             "date": time.strftime("%Y-%m-%d %H:%M:%S")
         }
-        
         self.leaderboard.append(score_entry)
-        # Sort by time (ascending - faster times first)
         self.leaderboard.sort(key=lambda x: x['time'])
-        
-        # Keep only top 10 scores
         self.leaderboard = self.leaderboard[:10]
-        
         self.save_leaderboard()
 
     def get_leaderboard(self) -> List[dict]:
-        """Get current leaderboard"""
         return self.leaderboard
 
+    # -------------------- Sound -------------------- #
     def play_beep(self, intensity='high'):
-        """Play beep sound with specified intensity and cooldown"""
         current_time = time.time()
-        
-        # Adjust cooldown based on intensity
-        cooldown = {
-            'light': 0.2,
-            'medium': 0.15,
-            'high': 0.1
-        }.get(intensity, 0.1)
-        
-        # Check cooldown and avoid repeating same intensity too quickly
+        cooldown = {'light': 0.2, 'medium': 0.15, 'high': 0.1}.get(intensity, 0.1)
+
         if (current_time - self.last_beep_time < cooldown and 
             self.last_beep_intensity == intensity):
             return
-            
+
         self.last_beep_time = current_time
         self.last_beep_intensity = intensity
-        
+
         if SOUND_AVAILABLE:
             try:
                 beep_sounds[intensity].play()
             except Exception as e:
-                print(f"Error playing {intensity} sound: {e}")
+                print(f"⚠️ Error playing {intensity} sound:", e)
                 system_beep(intensity)
         else:
             system_beep(intensity)
 
-    def get_proximity_to_wire(self, point: Tuple[int, int], wire_points: List[Tuple[int, int]]) -> float:
-        """
-        Get the minimum distance from a point to the wire path.
-        Returns distance as a ratio of the tolerance (0 = on wire, 1 = at tolerance boundary)
-        """
+    # -------------------- Core Game -------------------- #
+    def get_proximity_to_wire(self, point, wire_points):
         if not wire_points or len(wire_points) < 2:
             return float('inf')
-        
         min_distance = float('inf')
         px, py = point
-        
         for i in range(len(wire_points) - 1):
             distance = self.point_line_distance(px, py, *wire_points[i], *wire_points[i + 1])
             min_distance = min(min_distance, distance)
-        
         return min_distance / self.tolerance if self.tolerance > 0 else float('inf')
 
-    def check_proximity_and_play_sound(self, point: Tuple[int, int], wire_points: List[Tuple[int, int]]):
-        """Check proximity to wire and play appropriate sound based on distance"""
+    def check_proximity_and_play_sound(self, point, wire_points):
         proximity_ratio = self.get_proximity_to_wire(point, wire_points)
-        
         if proximity_ratio >= 1.0:
             self.play_beep('high')
             return True
@@ -234,15 +199,12 @@ class BuzzWireGame:
             self.play_beep('medium')
         elif proximity_ratio >= self.light_threshold:
             self.play_beep('light')
-        
         return False
 
-    # -------------------- Controls -------------------- #
+    # -------------------- Game Controls -------------------- #
     def start_game(self):
-        """Start the game (only if player name is set)"""
         if not self.can_start_game():
-            return False  # Cannot start without name
-            
+            return False
         if not self.game_started:
             self.game_started = True
             self.game_over = False
@@ -258,7 +220,6 @@ class BuzzWireGame:
         return True
 
     def reset_game(self):
-        """Reset the game"""
         self.game_started = False
         self.game_over = False
         self.won = False
@@ -271,7 +232,6 @@ class BuzzWireGame:
         self.last_beep_time = 0
         self.last_beep_intensity = None
 
-        # Generate a fresh wire
         ret, frame = self.cap.read()
         if ret:
             h, w, _ = frame.shape
@@ -280,7 +240,6 @@ class BuzzWireGame:
             self.wire_points = []
 
     def stop(self):
-        """Release resources"""
         try:
             if self.hands:
                 self.hands.close()
@@ -288,13 +247,17 @@ class BuzzWireGame:
             pass
         self.cap.release()
         cv2.destroyAllWindows()
-        
         if SOUND_AVAILABLE:
             try:
                 pygame.mixer.quit()
             except Exception:
                 pass
 
+    # -------------------- Frame Generator -------------------- #
+    # (rest of your get_frame, draw_wire, helpers remain unchanged)
+    # --------------------
+    # >>> Keep your original get_frame(), generate_random_wire(), etc. here
+    # --------------------
     # -------------------- Frame Generator -------------------- #
     def get_frame(self, key: Optional[str] = None) -> Optional[bytes]:
         """Capture, process, draw, and return the current frame as JPEG bytes"""
